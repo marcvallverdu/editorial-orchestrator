@@ -139,6 +139,21 @@ async function compareGaps(facts, existingContent) {
   return { results, elapsed: Date.now() - start };
 }
 
+// ─── Error page detection ───────────────────────────────────────────
+
+function looksLikeErrorPage(content) {
+  const lower = content.toLowerCase();
+  const errorSignals = [
+    'page not found', '404', 'error page', 'page you requested',
+    'sorry, we couldn', 'this page isn', 'access denied', 'forbidden',
+    'something went wrong', 'we can\'t find', 'no longer available',
+    'please try again', 'captcha', 'verify you are human',
+  ];
+  const matchCount = errorSignals.filter(s => lower.includes(s)).length;
+  // If 2+ error signals or content is mostly boilerplate (short + generic)
+  return matchCount >= 2 || (content.length < 500 && matchCount >= 1);
+}
+
 // ─── Step 6: Verify high-risk facts ─────────────────────────────────
 
 async function verifyHighRiskFacts(gaps, retailer) {
@@ -152,18 +167,22 @@ async function verifyHighRiskFacts(gaps, retailer) {
   
   const verified = [];
   for (const fact of highRisk) {
-    // Try scraping official page first
+    let pageContent = '';
+    
+    // Strategy 1: Try scraping the retailer's official help/policy page
     const slug = retailer.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const searchTerm = fact.type.replace(/_/g, '-');
     const officialUrl = `https://www.${slug}.com/help/${searchTerm}`;
     
-    let pageContent = '';
     const scrapeResult = await scrapePage(officialUrl);
+    const isUseful = scrapeResult.ok 
+      && scrapeResult.content.length > 300
+      && !looksLikeErrorPage(scrapeResult.content);
     
-    if (scrapeResult.ok && scrapeResult.content.length > 200 && !scrapeResult.content.includes('error page')) {
+    if (isUseful) {
       pageContent = scrapeResult.content.slice(0, 3000);
     } else {
-      // Fallback: targeted Perplexity search (more reliable than scraping)
+      // Strategy 2: Targeted Perplexity search (reliable, handles bot-blocked sites)
       const ppx = await verifyViaPerplexity(retailer, fact.content, fact.type);
       pageContent = ppx.content;
     }
