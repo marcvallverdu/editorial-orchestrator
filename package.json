@@ -1,0 +1,14 @@
+{
+  "name": "editorial-orchestrator",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AI-powered editorial research pipeline for discount/cashback sites. Finds content gaps by researching retailers and comparing against existing page content.",
+  "scripts": {
+    "pipeline": "node src/pipeline.mjs",
+    "batch": "node src/batch.mjs",
+    "scheduler": "node src/scheduler.mjs",
+    "test": "node src/pipeline.mjs \"Dick's Sporting Goods\" coupons.com"
+  },
+  "keywords": ["editorial", "research", "ai", "perplexity", "embeddings", "content-gap"],
+  "license": "MIT"
+}
