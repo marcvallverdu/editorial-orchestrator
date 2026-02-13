@@ -169,23 +169,11 @@ async function verifyHighRiskFacts(gaps, retailer) {
   for (const fact of highRisk) {
     let pageContent = '';
     
-    // Strategy 1: Try scraping the retailer's official help/policy page
-    const slug = retailer.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const searchTerm = fact.type.replace(/_/g, '-');
-    const officialUrl = `https://www.${slug}.com/help/${searchTerm}`;
-    
-    const scrapeResult = await scrapePage(officialUrl);
-    const isUseful = scrapeResult.ok 
-      && scrapeResult.content.length > 300
-      && !looksLikeErrorPage(scrapeResult.content);
-    
-    if (isUseful) {
-      pageContent = scrapeResult.content.slice(0, 3000);
-    } else {
-      // Strategy 2: Targeted Perplexity search (reliable, handles bot-blocked sites)
-      const ppx = await verifyViaPerplexity(retailer, fact.content, fact.type);
-      pageContent = ppx.content;
-    }
+    // Primary strategy: Targeted Perplexity search
+    // More reliable than scraping — handles bot-blocking, finds multiple sources,
+    // and synthesizes current info. Scraping is only useful if we know the exact URL.
+    const ppx = await verifyViaPerplexity(retailer, fact.content, fact.type);
+    pageContent = ppx.content;
     
     // M2.5 verification
     const verifyResult = await callM25(
